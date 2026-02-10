@@ -1,6 +1,5 @@
+<!-- Tripwire ASCII Banner -->
 <pre>
-
-                                             
 .oPYo. .oPYo.  o    o o     o  o         o 8 
 8      8       8    8 8     8              8 
 `Yooo. `Yooo. o8oooo8 8     8 o8 .oPYo. o8 8 
@@ -10,26 +9,34 @@
 :.....::.....::..:::..:::..::::..:....8 :....
 :::::::::::::::::::::::::::::::::::ooP'.:::::
 :::::::::::::::::::::::::::::::::::...:::::::
-
 </pre>
-# Tripwire SSH Brute-Force Analyzer
 
-**Version: 1.1 (February 10, 2026)**
+---
 
-## Overview
+# 🚦 Tripwire SSH Brute-Force Analyzer
+
+> **Version:** `1.1` &nbsp;|&nbsp; **Release Date:** February 10, 2026
+
+---
+
+## 🛡️ Overview
 Tripwire is a robust SSH brute-force detection and analysis tool designed for reliability, security, and production use. It parses SSH logs, detects brute-force attempts, and exports blocklists for fail2ban/systemd integration.
 
-## Features
-- Comprehensive SSH brute-force detection (covers all common log patterns)
-- Defensive input validation and error handling
-- CSV blocklist export with formula injection protection
-- Configurable detection thresholds
-- Dataclasses and enums for core models
-- Version constant and --version CLI flag
-- Production-ready deployment (fail2ban/systemd)
+---
 
-## Changelog
-### v1.1 (February 10, 2026)
+## ✨ Features
+- **Comprehensive SSH brute-force detection** (all common log patterns)
+- **Defensive input validation & error handling**
+- **CSV blocklist export** with formula injection protection
+- **Configurable detection thresholds**
+- **Dataclasses & enums for core models**
+- **Version constant & `--version` CLI flag**
+- **Production-ready deployment** (fail2ban/systemd)
+
+---
+
+## 📝 Changelog
+### **v1.1 (February 10, 2026)**
 - Expanded SSH detection rules (covers all common patterns)
 - Defensive input validation and CSV sanitization
 - Robust error handling and syslog timestamp parsing
@@ -38,29 +45,31 @@ Tripwire is a robust SSH brute-force detection and analysis tool designed for re
 - Updated README and documentation
 - All tests passing (84 passed, 2 skipped)
 
-### v1.0
+### **v1.0**
 - Initial release
 
-## Roadmap
-- v2.0: Advanced threat intelligence, real-time monitoring, and machine learning integration
+---
 
-## Requirements
+## 🚀 Roadmap
+- **v2.0:** Advanced threat intelligence, real-time monitoring, and machine learning integration
 
+---
+
+## ⚙️ Requirements
 - Python 3.8+ (built-in libraries only)
 - Access to SSH auth logs (e.g., `/var/log/auth.log`, `/var/log/secure`)
 
-On Debian/Ubuntu, invoke with `python3` (the `python` shim is not installed by default; install it with `sudo apt install python-is-python3` if you prefer `python`).
+---
 
-## Installation
-
+## 📦 Installation
 1. Clone this repository
 2. Optional: create a virtual environment
 3. No external dependencies required
 
-## Configuration
+---
 
+## 🔧 Configuration
 Edit `config.json` to tune behavior:
-
 - `max_attempts`: Threshold for short-window detection
 - `time_window_minutes`: Rolling window size for short-burst detection
 - `block_threshold`: Total failed attempts to recommend blocking
@@ -71,22 +80,23 @@ Edit `config.json` to tune behavior:
 
 On first run, a default `config.json` is created if missing.
 
-### Security Posture: SSH-Key vs Password Authentication
+---
 
+## 🔒 Security Posture: SSH-Key vs Password Authentication
 **Default thresholds** assume mixed environments where legitimate users might occasionally mistype passwords:
-- `max_attempts: 5` - Flags IPs with 5+ failed attempts in a short window
-- `monitor_threshold: 20` - Recommends monitoring at 20+ total attempts
-- `block_threshold: 50` - Recommends blocking at 50+ total attempts
+- `max_attempts: 5` — Flags IPs with 5+ failed attempts in a short window
+- `monitor_threshold: 20` — Recommends monitoring at 20+ total attempts
+- `block_threshold: 50` — Recommends blocking at 50+ total attempts
 
 **SSH-key-only servers** (password auth disabled) should use stricter rules, since *any* password attempt is suspicious:
 
-#### Option 1: Use `--strict` preset (recommended)
+**Option 1:** Use `--strict` preset (recommended)
 ```bash
 python3 main.py --log-file "/var/log/auth.log" --live --strict
 ```
 This sets `max_attempts=1`, `monitor_threshold=1`, `block_threshold=5` to flag every password attempt.
 
-#### Option 2: Edit `config.json` manually
+**Option 2:** Edit `config.json` manually
 ```json
 {
   "max_attempts": 1,
@@ -103,41 +113,36 @@ This sets `max_attempts=1`, `monitor_threshold=1`, `block_threshold=5` to flag e
 - `PasswordAuthentication no` → Use `--strict`
 - `PasswordAuthentication yes` → Use defaults
 
-## Usage
+---
 
+## 🖥️ Usage
 Interactive run (opens a file picker if no path provided):
-
 ```bash
 python3 main.py
 ```
 
 Non-interactive (pass a log file and optional summary size):
-
 ```bash
 python3 main.py --log-file "/var/log/auth.log" --summary-limit 50
 ```
 
 Live monitoring (tail the log, refresh every 5s by default):
-
 ```bash
 python3 main.py --log-file "/var/log/auth.log" --live --refresh 5
 ```
 
 Start from top of file instead of tail:
-
 ```bash
 python3 main.py --log-file "/var/log/auth.log" --live --follow-start
 ```
 
 Reduce noise and condense output:
-
 ```bash
 # Show only HIGH+ threats and skip event summaries
 python3 main.py --log-file "/var/log/auth.log" --live --filter-severity HIGH --compact
 ```
 
 Quick presets and shortcuts:
-
 ```bash
 # Strict mode for SSH-key-only servers (flags any password attempt)
 python3 main.py --log-file "/var/log/auth.log" --live --strict
@@ -156,18 +161,17 @@ python3 main.py --log-file "/var/log/auth.log" --live --quiet   # same as HIGH+ 
 python3 main.py --log-file "/var/log/auth.log" --live --noisy   # show everything
 ```
 
-## v1.0 Features
+---
 
+## 🛠️ v1.0 Features
 ### Non-Interactive Mode
 Run without prompts for automation (cron jobs, systemd timers):
-
 ```bash
 python3 main.py --log-file /var/log/auth.log --non-interactive --export-csv results.csv
 ```
 
 ### IP Whitelist
 Prevent false positives by whitelisting trusted IPs. Create a whitelist file (one IP per line, `#` for comments):
-
 **whitelist.txt:**
 ```
 # Trusted infrastructure
@@ -175,7 +179,6 @@ Prevent false positives by whitelisting trusted IPs. Create a whitelist file (on
 10.0.0.100
 203.0.113.5
 ```
-
 **Usage:**
 ```bash
 python3 main.py --log-file /var/log/auth.log --whitelist whitelist.txt --export-blocklist blocklist.txt
@@ -183,7 +186,6 @@ python3 main.py --log-file /var/log/auth.log --whitelist whitelist.txt --export-
 
 ### CSV Export in Live Mode
 Export live threat data continuously during real-time monitoring:
-
 ```bash
 python3 main.py --log-file /var/log/auth.log --live --export-csv threats.csv --refresh 5
 ```
@@ -205,20 +207,19 @@ python3 /opt/tripwire/main.py \
 ```
 
 Disable color output (useful for CI or plain terminals):
-
 ```bash
 NO_COLOR=1 python main.py --log-file "/var/log/auth.log"
 ```
 
 On Windows PowerShell:
-
 ```powershell
 $env:NO_COLOR = 1
 python .\main.py --log-file "C:\\path\\to\\auth.log"
 ```
 
-## Output
+---
 
+## 📊 Output
 
 ![Tripwire threat analysis output showing real-time SSH brute-force detection: 12 IPs analyzed with 104 total attempts over 19 minutes. Two HIGH-severity IPs (146.190.237.126 and 36.88.28.122) marked as BLOCKED with 12 and 10 attempts respectively, while MEDIUM-severity threats are monitored and LOW-severity IPs allowed. Blocklist summary shows 2 IPs blocked at HIGH+ severity threshold.](<assets/Image of output.png>)
 
@@ -229,10 +230,10 @@ python .\main.py --log-file "C:\\path\\to\\auth.log"
 
 To export all results to CSV, answer `y` when prompted or set `export_csv` in code; the file is saved next to your log as `brute_force_analysis.csv`.
 
-## Fail2ban Integration
+---
 
+## 🔗 Fail2ban Integration
 Export a blocklist of malicious IPs for use with fail2ban or manual iptables blocking:
-
 ```bash
 # Export HIGH+ severity IPs to blocklist (default threshold)
 python3 main.py --log-file "/var/log/auth.log" --export-blocklist blocked-ips.txt
@@ -245,7 +246,6 @@ python3 main.py --log-file "/var/log/auth.log" --live --export-blocklist /var/lo
 ```
 
 ### Manual iptables blocking
-
 ```bash
 # Block all IPs from the generated file
 while read ip; do
@@ -260,9 +260,7 @@ sudo iptables -F INPUT
 ```
 
 ### Automated fail2ban setup
-
 One-command fail2ban integration with automatic jail and filter config creation:
-
 ```bash
 # Setup fail2ban jail and filter (creates configs, restarts fail2ban)
 sudo python3 main.py --setup-fail2ban
@@ -278,9 +276,7 @@ The `--setup-fail2ban` flag automatically:
 - Sets up blocklist directory at `/var/lib/sshvigil/`
 
 ### Systemd service installation (production)
-
 One-command production deployment with auto-start and auto-restart:
-
 ```bash
 # Install and start systemd service (auto-restarts on crash, runs on boot)
 sudo python3 main.py --install-service
@@ -294,7 +290,6 @@ The `--install-service` flag automatically:
 - Uses `--non-interactive` mode to prevent prompts during background operation
 
 After installation, manage the service with standard systemd commands:
-
 ```bash
 # Check status
 sudo systemctl status sshvigil
@@ -310,9 +305,7 @@ sudo systemctl stop sshvigil
 ```
 
 ### Complete production setup (one-shot)
-
 For a complete production deployment on a fresh system:
-
 ```bash
 # 1. Setup fail2ban integration
 sudo python3 main.py --setup-fail2ban
@@ -335,14 +328,11 @@ The service will now:
 - Auto-restart if the process crashes
 
 ### Manual setup (for reference)
-
 If you prefer manual configuration or need advanced customization:
-
 1. Copy filter config:
 ```bash
 sudo cp examples/fail2ban-ssh-analyzer.conf /etc/fail2ban/filter.d/
 ```
-
 2. Add jail to `/etc/fail2ban/jail.local`:
 ```ini
 [ssh-analyzer]
@@ -355,68 +345,33 @@ findtime = 86400
 bantime  = 604800
 action   = iptables-multiport[name=SSH, port="ssh", protocol=tcp]
 ```
-
 3. Run analyzer in live mode writing to blocklist:
 ```bash
 python3 main.py --log-file "/var/log/auth.log" --live --export-blocklist /var/log/ssh-blocklist.txt --strict
 ```
-
 4. Restart fail2ban:
 ```bash
 sudo systemctl restart fail2ban
 sudo fail2ban-client status ssh-analyzer
 ```
 
-## Notes
+---
 
+## 🗒️ Notes
 - Supported formats are auto-detected; if detection fails, available formats are listed.
 - The parser tracks basic stats: lines read, format matches, extract matches, and timestamp coverage.
 
-## Roadmap (v2.0+)
+---
 
+## 📅 Roadmap (v2.0+)
 - Additional event types and heuristics
 - Enrichment (GeoIP, ASN) via optional modules
 - Batch processing and scheduling
 - Database backend for long-term analysis
 
-## Changelog
+---
 
-### v1.1.0
-
-**Bug fixes & hardening**
-- Fixed analysis display filtering out all private/RFC1918 IPs — private IPs now appear in analysis output and are only excluded from blocklist exports (safety)
-- Removed unused `THRESHOLD` variable from analysis path
-- Fixed bare `except:` clause in PID lock cleanup (now catches `OSError`)
-- Fixed syslog year rollover logic (previously only handled Jan→Dec, now handles any month)
-- Fixed `format_duration()` crash on negative timedelta values
-
-**Input validation**
-- `BruteForceDetector` constructor now clamps/validates all numeric parameters with safe defaults  
-- `add_attempt()` validates IP, timestamp type, coerces username to string, coerces success to bool
-- `analyze()` validates severity parameters with fallback warnings
-- `is_valid_ip()` now rejects `None`, empty strings, non-strings, and CIDR notation
-- All timestamp aggregations use defensive `isinstance()` guards
-
-**Security**
-- CSV export now sanitizes values to prevent formula injection (`=`, `+`, `-`, `@` prefixed values)
-- Parser validates extracted IPs before adding to results
-- Config loader handles `bool`/`int` subclass ambiguity in Python
-- `follow_file()` handles `PermissionError`, clamps poll interval to 0.1–60s
-
-**New features**
-- `--version` / `-V` flag to display version
-- Proper data models: `ThreatLevel` enum, `Attempt` and `IPSummary` dataclasses in `models.py`
-- Version constant (`models.__version__`) for programmatic access
-- 10 new SSH detection rules: `failed_none`, `failed_publickey`, `authentication_failure`, `connection_closed_preauth`, `disconnected_preauth`, `connection_reset_preauth`, `max_auth_attempts`, `too_many_auth_failures`, `break_in_attempt`, `accepted_gssapi`
-- Rule ordering now correct (specific patterns before generic to avoid false matches)
-- Rules converted from tabs to spaces for PEP 8 consistency
-
-### v1.0.0
-
-- Initial release
-
-## License
-
+## 📜 License
 MIT License — See [LICENSE](LICENSE) file for details.
 
 Free to use, modify, and distribute with attribution.
