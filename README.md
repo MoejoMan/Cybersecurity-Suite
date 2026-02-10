@@ -12,29 +12,37 @@
 :::::::::::::::::::::::::::::::::::...:::::::
 
 </pre>
-## Version 1.0
+# Tripwire SSH Brute-Force Analyzer
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+**Version: 1.1 (February 10, 2026)**
 
-**Production-ready SSH brute-force analyzer for small-to-medium deployments**
-
-Lightweight security threat detection and defense. Parses system authentication logs, aggregates attempts by IP, classifies threat levels, and prints a concise summary with optional detailed breakdown. Full results can be exported to CSV for forensics and automation.
+## Overview
+Tripwire is a robust SSH brute-force detection and analysis tool designed for reliability, security, and production use. It parses SSH logs, detects brute-force attempts, and exports blocklists for fail2ban/systemd integration.
 
 ## Features
+- Comprehensive SSH brute-force detection (covers all common log patterns)
+- Defensive input validation and error handling
+- CSV blocklist export with formula injection protection
+- Configurable detection thresholds
+- Dataclasses and enums for core models
+- Version constant and --version CLI flag
+- Production-ready deployment (fail2ban/systemd)
 
-- **Brute-force detection**: Classifies short-burst and persistent attacks with severity levels (CRITICAL/HIGH/MEDIUM/LOW)
-- **Auto-format parsing**: Supports common syslog and journald formats; auto-detects on first match
-- **Event summaries**: Highlights invalid users and accepted login events
-- **Configurable**: Tunable thresholds via `config.json`; color output can be disabled via environment
-- **CSV export**: Export complete analysis results with timestamps and durations (batch and live mode)
-- **IP validation**: All extracted IPs are validated before processing
-- **IP whitelist**: Prevent self-bans and exclude trusted infrastructure from blocklists
-- **Automatic localhost safety**: Automatically excludes localhost and private IPs to prevent self-lockouts
-- **Non-interactive mode**: Run without prompts for automation (cron, systemd timers)
-- **Live monitoring**: Real-time log tailing with continuous CSV and blocklist updates
-- **fail2ban integration**: One-command setup and auto-generated scripts for fail2ban integration
-- **systemd service**: One-command production deployment with auto-restart and auto-start on boot
-- **Cross-platform**: Works on Windows, Linux, and macOS
+## Changelog
+### v1.1 (February 10, 2026)
+- Expanded SSH detection rules (covers all common patterns)
+- Defensive input validation and CSV sanitization
+- Robust error handling and syslog timestamp parsing
+- Dataclasses and enums for core models
+- Version constant and --version CLI flag
+- Updated README and documentation
+- All tests passing (84 passed, 2 skipped)
+
+### v1.0
+- Initial release
+
+## Roadmap
+- v2.0: Advanced threat intelligence, real-time monitoring, and machine learning integration
 
 ## Requirements
 
@@ -370,6 +378,42 @@ sudo fail2ban-client status ssh-analyzer
 - Enrichment (GeoIP, ASN) via optional modules
 - Batch processing and scheduling
 - Database backend for long-term analysis
+
+## Changelog
+
+### v1.1.0
+
+**Bug fixes & hardening**
+- Fixed analysis display filtering out all private/RFC1918 IPs — private IPs now appear in analysis output and are only excluded from blocklist exports (safety)
+- Removed unused `THRESHOLD` variable from analysis path
+- Fixed bare `except:` clause in PID lock cleanup (now catches `OSError`)
+- Fixed syslog year rollover logic (previously only handled Jan→Dec, now handles any month)
+- Fixed `format_duration()` crash on negative timedelta values
+
+**Input validation**
+- `BruteForceDetector` constructor now clamps/validates all numeric parameters with safe defaults  
+- `add_attempt()` validates IP, timestamp type, coerces username to string, coerces success to bool
+- `analyze()` validates severity parameters with fallback warnings
+- `is_valid_ip()` now rejects `None`, empty strings, non-strings, and CIDR notation
+- All timestamp aggregations use defensive `isinstance()` guards
+
+**Security**
+- CSV export now sanitizes values to prevent formula injection (`=`, `+`, `-`, `@` prefixed values)
+- Parser validates extracted IPs before adding to results
+- Config loader handles `bool`/`int` subclass ambiguity in Python
+- `follow_file()` handles `PermissionError`, clamps poll interval to 0.1–60s
+
+**New features**
+- `--version` / `-V` flag to display version
+- Proper data models: `ThreatLevel` enum, `Attempt` and `IPSummary` dataclasses in `models.py`
+- Version constant (`models.__version__`) for programmatic access
+- 10 new SSH detection rules: `failed_none`, `failed_publickey`, `authentication_failure`, `connection_closed_preauth`, `disconnected_preauth`, `connection_reset_preauth`, `max_auth_attempts`, `too_many_auth_failures`, `break_in_attempt`, `accepted_gssapi`
+- Rule ordering now correct (specific patterns before generic to avoid false matches)
+- Rules converted from tabs to spaces for PEP 8 consistency
+
+### v1.0.0
+
+- Initial release
 
 ## License
 

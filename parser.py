@@ -179,7 +179,10 @@ class SSHLogParser:
                         for p in PATTERNS:
                             m = p['regex'].search(info)
                             if m:
-                                username = m.group('username')
+                                try:
+                                    username = m.group('username') or '<unknown>'
+                                except IndexError:
+                                    username = '<unknown>'
                                 ip = m.group('ip')
                                 if is_valid_ip(ip):
                                     self.stats['extract_matches'] += 1
@@ -238,7 +241,10 @@ class SSHLogParser:
                 for p in PATTERNS:
                     m = p['regex'].search(info)
                     if m:
-                        username = m.group('username')
+                        try:
+                            username = m.group('username') or '<unknown>'
+                        except IndexError:
+                            username = '<unknown>'
                         ip = m.group('ip')
                         if is_valid_ip(ip):
                             self.stats['extract_matches'] += 1

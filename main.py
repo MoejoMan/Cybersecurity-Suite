@@ -23,6 +23,7 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 from parser import SSHLogParser
 from config import Config
+from models import __version__
 from utils import follow_file, is_valid_ip
 
 # Localhost whitelist - these IPs are ALWAYS excluded from blocklists for safety
@@ -823,6 +824,7 @@ def main():
     description="SSHVigil - SSH Brute Force Detection & Defense",
     epilog="Examples:\n  python3 main.py --log-file /var/log/auth.log --live -f HIGH --compact --refresh 10\n  python3 main.py --log-file /var/log/auth.log --live --mode soc\n  python3 main.py --log-file /var/log/auth.log --live --follow-start --summary-limit 10\n  python3 main.py --log-file /var/log/auth.log --live --mode verbose\n"
     )
+    argp.add_argument("--version", "-V", action="version", version=f"SSHVigil v{__version__}")
     argp.add_argument("--log-file", dest="log_file", help="Path to auth/secure log file")
     argp.add_argument("--summary-limit", dest="summary_limit", type=int, help="Max rows to show in terminal summary")
     argp.add_argument("--live", dest="live", action="store_true", help="Follow the log file and analyze in real-time")
@@ -845,7 +847,7 @@ def main():
     argp.add_argument("--non-interactive", dest="non_interactive", action="store_true", help="Suppress prompts for automation (batch mode will skip verbose/export questions)")
     argp.add_argument("--whitelist", dest="whitelist", help="Path to whitelist file (one IP per line) to exclude from blocklist")
     args = argp.parse_args()
-    print("SSHVigil - SSH Brute Force Analyzer")
+    print(f"SSHVigil v{__version__} - SSH Brute Force Analyzer")
     print("=" * 40)
     
     # Only import tkinter and show GUI if not in live mode and no log-file provided
