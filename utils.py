@@ -21,10 +21,15 @@ def is_valid_ip(ip_str: str) -> bool:
     Returns:
         True if valid IP, False otherwise
     """
+    if not ip_str or not isinstance(ip_str, str):
+        return False
+    # Quick reject for obviously invalid strings (CIDR notation, etc.)
+    if '/' in ip_str:
+        return False
     try:
-        ipaddress.ip_address(ip_str)
+        ipaddress.ip_address(ip_str.strip())
         return True
-    except ValueError:
+    except (ValueError, TypeError):
         return False
 
 
@@ -35,6 +40,9 @@ def follow_file(path: str, start_from_end: bool = True, poll_seconds: float = 0.
     or the path temporarily disappears. Emits `None` during idle periods so
     callers can still run periodic tasks (heartbeats/refreshes).
     """
+    # Clamp poll_seconds to sane range
+    poll_seconds = max(0.1, min(float(poll_seconds), 60.0))
+    
     while True:
         try:
             with open(path, 'r', errors='ignore') as f:
@@ -42,7 +50,10 @@ def follow_file(path: str, start_from_end: bool = True, poll_seconds: float = 0.
                     f.seek(0, os.SEEK_END)
                 else:
                     f.seek(0)
-                last_size = os.path.getsize(path)
+                try:
+                    last_size = os.path.getsize(path)
+                except OSError:
+                    last_size = 0
                 while True:
                     line = f.readline()
                     if line:
@@ -56,11 +67,14 @@ def follow_file(path: str, start_from_end: bool = True, poll_seconds: float = 0.
                                 # truncated or rotated; reopen
                                 break
                             last_size = current_size
-                        except Exception:
+                        except OSError:
                             # path missing or inaccessible; retry outer loop
                             time.sleep(poll_seconds)
                             break
         except FileNotFoundError:
+            time.sleep(poll_seconds)
+            continue
+        except PermissionError:
             time.sleep(poll_seconds)
             continue
 

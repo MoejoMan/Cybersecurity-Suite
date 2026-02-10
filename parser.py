@@ -9,6 +9,7 @@ import re
 import os
 from datetime import datetime
 from rules import PATTERNS
+from utils import is_valid_ip
 from typing import List, Tuple, Optional
 
 
@@ -166,22 +167,24 @@ class SSHLogParser:
                     extracted = False
                     fmt_match = self.detected_format.extract_pattern.search(info) if hasattr(self.detected_format, 'extract_pattern') and self.detected_format.extract_pattern else None
                     if fmt_match:
-                        self.stats['extract_matches'] += 1
                         username = fmt_match.group(1)
                         ip = fmt_match.group(2)
-                        # Default event label for format-specific extractor
-                        attempts.append((ip, username, timestamp, False, 'invalid_user'))
-                        extracted = True
+                        if is_valid_ip(ip):
+                            self.stats['extract_matches'] += 1
+                            # Default event label for format-specific extractor
+                            attempts.append((ip, username, timestamp, False, 'invalid_user'))
+                            extracted = True
                     else:
                         # Fall back to generic patterns from rules
                         for p in PATTERNS:
                             m = p['regex'].search(info)
                             if m:
-                                self.stats['extract_matches'] += 1
                                 username = m.group('username')
                                 ip = m.group('ip')
-                                attempts.append((ip, username, timestamp, p['success'], p['name']))
-                                extracted = True
+                                if is_valid_ip(ip):
+                                    self.stats['extract_matches'] += 1
+                                    attempts.append((ip, username, timestamp, p['success'], p['name']))
+                                    extracted = True
                                 break
         
         return attempts, self.stats
@@ -225,19 +228,21 @@ class SSHLogParser:
             # Try format-specific pattern first
             fmt_match = self.detected_format.extract_pattern.search(info) if hasattr(self.detected_format, 'extract_pattern') and self.detected_format.extract_pattern else None
             if fmt_match:
-                self.stats['extract_matches'] += 1
                 username = fmt_match.group(1)
                 ip = fmt_match.group(2)
-                attempts.append((ip, username, timestamp, False, 'invalid_user'))
+                if is_valid_ip(ip):
+                    self.stats['extract_matches'] += 1
+                    attempts.append((ip, username, timestamp, False, 'invalid_user'))
             else:
                 # Fall back to generic patterns from rules
                 for p in PATTERNS:
                     m = p['regex'].search(info)
                     if m:
-                        self.stats['extract_matches'] += 1
                         username = m.group('username')
                         ip = m.group('ip')
-                        attempts.append((ip, username, timestamp, p['success'], p['name']))
+                        if is_valid_ip(ip):
+                            self.stats['extract_matches'] += 1
+                            attempts.append((ip, username, timestamp, p['success'], p['name']))
                         break
         
         return attempts
@@ -265,12 +270,17 @@ class SSHLogParser:
 
 
 def _parse_syslog_timestamp(line: str) -> datetime:
-    """Parse syslog-style timestamp (no year, current year assumed)."""
-    # Format: "Jan 15 12:34:56"
-    import time
+    """
+    Parse syslog-style timestamp (no year, current year assumed).
+    
+    Handles year rollover: if the log month is ahead of current month,
+    assumes the entry is from the previous year (e.g., Dec logs read in Jan).
+    
+    Validates day, hour, minute, second ranges to reject garbage data.
+    """
     parts = line.split()
     if len(parts) < 3:
-        raise ValueError("Invalid syslog timestamp")
+        raise ValueError("Invalid syslog timestamp: not enough fields")
     
     month_str = parts[0]
     day_str = parts[1]
@@ -286,12 +296,28 @@ def _parse_syslog_timestamp(line: str) -> datetime:
     if month is None:
         raise ValueError(f"Invalid month: {month_str}")
     
-    day = int(day_str)
-    hour, minute, second = map(int, time_str.split(':'))
+    try:
+        day = int(day_str)
+    except ValueError:
+        raise ValueError(f"Invalid day: {day_str}")
+    
+    time_parts = time_str.split(':')
+    if len(time_parts) != 3:
+        raise ValueError(f"Invalid time format: {time_str}")
+    
+    try:
+        hour, minute, second = int(time_parts[0]), int(time_parts[1]), int(time_parts[2])
+    except ValueError:
+        raise ValueError(f"Invalid time components: {time_str}")
+    
+    # Validate ranges (datetime constructor will also catch, but explicit is better)
+    if not (1 <= day <= 31 and 0 <= hour <= 23 and 0 <= minute <= 59 and 0 <= second <= 59):
+        raise ValueError(f"Time/date values out of range: day={day}, time={hour}:{minute}:{second}")
+    
     now = datetime.now()
     year = now.year
-    # Handle year rollover for December/January logs
-    if month > now.month and now.month == 1:
+    # Handle year rollover: if log month is ahead of current month, assume previous year
+    if month > now.month:
         year = year - 1
     
     return datetime(year, month, day, hour, minute, second)

@@ -60,12 +60,14 @@ class BruteForceDetector:
     """
 
     def __init__(self, max_attempts=5, time_window_minutes=10, block_threshold=50, monitor_threshold=20, summary_limit=20, verbose_limit=10):
-        self.max_attempts = max_attempts
+        # Validate and clamp parameters to sane values
+        self.max_attempts = max(0, int(max_attempts)) if max_attempts is not None else 5
+        time_window_minutes = max(0, float(time_window_minutes)) if time_window_minutes is not None else 10
         self.time_window = timedelta(minutes=time_window_minutes)
-        self.block_threshold = block_threshold
-        self.monitor_threshold = monitor_threshold
-        self.summary_limit = summary_limit
-        self.verbose_limit = verbose_limit
+        self.block_threshold = max(0, int(block_threshold)) if block_threshold is not None else 50
+        self.monitor_threshold = max(0, int(monitor_threshold)) if monitor_threshold is not None else 20
+        self.summary_limit = max(1, int(summary_limit)) if summary_limit is not None else 20
+        self.verbose_limit = max(1, int(verbose_limit)) if verbose_limit is not None else 10
         self.use_color = not os.environ.get('NO_COLOR')
         self.attempts_by_ip = defaultdict(list)
         self.written_ips = set()  # Track IPs already written to blocklist
@@ -96,6 +98,18 @@ class BruteForceDetector:
             return text
         return f"\033[{';'.join(codes)}m{text}\033[0m"
 
+    @staticmethod
+    def _sanitize_csv_value(value):
+        """
+        Sanitize a value for CSV export to prevent formula injection.
+        
+        Prefixes values starting with =, +, -, @, \t, \r with a single quote
+        to neutralize spreadsheet formula execution.
+        """
+        if isinstance(value, str) and value and value[0] in ('=', '+', '-', '@', '\t', '\r'):
+            return "'" + value
+        return value
+
     def add_attempt(self, ip_address, username, timestamp, success, event=None):
         """
         Record a single SSH auth attempt parsed from the logs.
@@ -108,13 +122,20 @@ class BruteForceDetector:
         - event: Optional label describing the event type (e.g., 'invalid_user').
         """
         # Validate IP before adding
-        if not is_valid_ip(ip_address):
+        if not ip_address or not is_valid_ip(str(ip_address)):
             return  # Skip invalid IPs silently
+        
+        # Validate timestamp
+        if not isinstance(timestamp, datetime):
+            return  # Skip entries without a valid timestamp
+        
+        # Coerce username to string and strip control characters for safety
+        username = str(username) if username is not None else "<unknown>"
         
         self.attempts_by_ip[ip_address].append({
             "username": username,
             "timestamp": timestamp,
-            "success": success,
+            "success": bool(success),
             "event": event
         })
 
@@ -162,7 +183,7 @@ class BruteForceDetector:
 
         Example: "2h 3m 15s" or "7m 04s".
         """
-        total_seconds = int(delta.total_seconds())
+        total_seconds = int(abs(delta.total_seconds()))  # abs() to handle negative deltas gracefully
         hours, remainder = divmod(total_seconds, 3600)
         minutes, seconds = divmod(remainder, 60)
         if hours:
@@ -187,9 +208,17 @@ class BruteForceDetector:
         - List of dict rows with keys: IP, Attempts, Attack_Rate, Severity,
           Action, Duration, Window_Start, Window_End.
         """
-        THRESHOLD = self.max_attempts
         summary = defaultdict(lambda: defaultdict(int))
         whitelist = whitelist or set()  # Default to empty set if None
+        
+        # Validate severity parameters
+        valid_severities = {"CRITICAL", "HIGH", "MEDIUM", "LOW"}
+        if blocklist_threshold not in valid_severities:
+            print(f"[WARNING] Invalid blocklist_threshold '{blocklist_threshold}', defaulting to HIGH")
+            blocklist_threshold = "HIGH"
+        if filter_severity is not None and filter_severity not in valid_severities:
+            print(f"[WARNING] Invalid filter_severity '{filter_severity}', ignoring filter")
+            filter_severity = None
 
         for ip, attempts in self.attempts_by_ip.items():
             for attempt in attempts:
@@ -209,11 +238,15 @@ class BruteForceDetector:
             attempts = self.attempts_by_ip[ip]
             
             if attempts:
-                timestamps = [att['timestamp'] for att in attempts]
-                duration = max(timestamps) - min(timestamps)
-                # Add 1 minute floor to prevent inflated rates from tiny time windows
-                total_minutes = max(duration.total_seconds() / 60, 1.0)
-                attack_rate = total_attempts / total_minutes
+                timestamps = [att['timestamp'] for att in attempts if isinstance(att.get('timestamp'), datetime)]
+                if timestamps:
+                    duration = max(timestamps) - min(timestamps)
+                    # Add 1 minute floor to prevent inflated rates from tiny time windows
+                    total_minutes = max(duration.total_seconds() / 60, 1.0)
+                    attack_rate = total_attempts / total_minutes
+                else:
+                    attack_rate = 0
+                    duration = timedelta(0)
             else:
                 attack_rate = 0
                 duration = timedelta(0)
@@ -236,7 +269,9 @@ class BruteForceDetector:
                 attempts = self.attempts_by_ip[ip]
                 if not attempts:
                     continue
-                timestamps = [att['timestamp'] for att in attempts]
+                timestamps = [att['timestamp'] for att in attempts if isinstance(att.get('timestamp'), datetime)]
+                if not timestamps:
+                    continue
                 duration = max(timestamps) - min(timestamps)
                 total_minutes = max(duration.total_seconds() / 60, 1.0)
                 attack_rate = total_attempts / total_minutes
@@ -252,14 +287,13 @@ class BruteForceDetector:
         # Compute results for all IPs (for full CSV export)
         all_results = []
         for (ip, usernames) in sorted_ips:
-            # SAFETY: Never surface localhost/private networks in summaries or exports
-            if is_localhost_or_private(ip):
-                continue
             total_attempts = sum(usernames.values())
             attempts = self.attempts_by_ip[ip]
             if not attempts:
                 continue
-            timestamps = [att['timestamp'] for att in attempts]
+            timestamps = [att['timestamp'] for att in attempts if isinstance(att.get('timestamp'), datetime)]
+            if not timestamps:
+                continue
             first = min(timestamps)
             last = max(timestamps)
             duration = last - first
@@ -293,7 +327,7 @@ class BruteForceDetector:
         total_parsed_attempts = 0
         for attempts in self.attempts_by_ip.values():
             total_parsed_attempts += len(attempts)
-            all_timestamps.extend(att['timestamp'] for att in attempts)
+            all_timestamps.extend(att['timestamp'] for att in attempts if isinstance(att.get('timestamp'), datetime))
         ip_count = len(self.attempts_by_ip)
 
         # Get terminal width for better formatting
@@ -329,8 +363,6 @@ class BruteForceDetector:
             # Invalid user summary (top N by count)
             invalid_counts = defaultdict(int)
             for ip, attempts in self.attempts_by_ip.items():
-                if is_localhost_or_private(ip):
-                    continue
                 for att in attempts:
                     if att.get('event') == 'invalid_user':
                         invalid_counts[ip] += 1
@@ -345,8 +377,6 @@ class BruteForceDetector:
             # Accepted password summary (top N by count)
             accepted_counts = defaultdict(int)
             for ip, attempts in self.attempts_by_ip.items():
-                if is_localhost_or_private(ip):
-                    continue
                 for att in attempts:
                     if att.get('success') is True:
                         accepted_counts[ip] += 1
@@ -442,7 +472,9 @@ class BruteForceDetector:
                 attempts = self.attempts_by_ip[ip]
                 
                 if attempts:
-                    timestamps = [att['timestamp'] for att in attempts]
+                    timestamps = [att['timestamp'] for att in attempts if isinstance(att.get('timestamp'), datetime)]
+                    if not timestamps:
+                        continue
                     first = min(timestamps)
                     last = max(timestamps)
                     duration = last - first
@@ -458,16 +490,20 @@ class BruteForceDetector:
                     print(f"  Window: {first.strftime('%Y-%m-%d %H:%M:%S')} to {last.strftime('%H:%M:%S')} ({duration_str})")
                     print("-" * line_width)
         
-        # Export full results to CSV
+        # Export full results to CSV (with formula injection sanitization)
         if export_csv and all_results:
             try:
-                with open(export_csv, 'w', newline='') as f:
+                with open(export_csv, 'w', newline='', encoding='utf-8') as f:
                     writer = csv.DictWriter(f, fieldnames=all_results[0].keys())
                     writer.writeheader()
-                    writer.writerows(all_results)
+                    for row in all_results:
+                        sanitized = {k: self._sanitize_csv_value(v) for k, v in row.items()}
+                        writer.writerow(sanitized)
                 print(f"\nResults exported to: {export_csv}")
-            except Exception as e:
-                print(f"Error exporting CSV: {e}")
+            except PermissionError:
+                print(f"[ERROR] Permission denied writing CSV: {export_csv}")
+            except OSError as e:
+                print(f"[ERROR] Could not write CSV: {e}")
         
         # Export blocklist for iptables/fail2ban (append-only for faster detection)
         if export_blocklist and all_results:
@@ -527,7 +563,7 @@ def check_pid_lock(blocklist_path):
                 # Stale lock file, clean it up
                 try:
                     os.remove(pid_file)
-                except:
+                except OSError:
                     pass
     return pid_file, None
 

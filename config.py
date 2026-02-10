@@ -69,9 +69,17 @@ class Config:
                     print(f"[WARNING] Unknown config key '{key}' - ignoring")
                     continue
                 
-                # Type validation
+                # Type validation (bool check must come first since bool is subclass of int)
                 expected_type = type(self.DEFAULTS[key])
-                if not isinstance(value, expected_type):
+                if expected_type == int and isinstance(value, bool):
+                    # bool is subclass of int in Python, but we want strict int for numeric fields
+                    print(f"[WARNING] Invalid type for '{key}': expected int, got bool")
+                    print(f"  Using default value: {self.DEFAULTS[key]}")
+                    continue
+                if expected_type == bool and isinstance(value, int) and not isinstance(value, bool):
+                    # Accept int 0/1 as bool values
+                    value = bool(value)
+                elif not isinstance(value, expected_type):
                     print(f"[WARNING] Invalid type for '{key}': expected {expected_type.__name__}, got {type(value).__name__}")
                     print(f"  Using default value: {self.DEFAULTS[key]}")
                     continue
