@@ -13,7 +13,7 @@
 
 ---
 
-# 🚦 SSHVigil SSH Brute-Force Analyzer
+# SSHVigil SSH Brute-Force Analyzer
 
 **Purpose:** SSHVigil is a lightweight, focused SSH brute-force detection and analysis tool. It is designed for users who want a simple, production-ready solution for SSH security monitoring—without the complexity or overhead of full-stack monitoring systems like Kibana or Grafana.
 
@@ -28,12 +28,12 @@
 
 ---
 
-## 🛡️ Overview
+## Overview
 SSHVigil is a robust SSH brute-force detection and analysis tool designed for reliability, security, and production use. It parses SSH logs, detects brute-force attempts, and exports blocklists for fail2ban/systemd integration. The fail2ban integration is meant to enhance fail2ban's detection/blocking by providing better blocklists and analytics, not to replace fail2ban itself. Future versions will add integration with other popular monitoring and alerting tools.
 
 ---
 
-## ✨ Features
+## Features
 - Focused SSH brute-force detection (all common log patterns)
 - Defensive input validation & error handling
 - CSV blocklist export (with formula injection protection)
@@ -44,7 +44,7 @@ SSHVigil is a robust SSH brute-force detection and analysis tool designed for re
 
 ---
 
-## 📝 Changelog
+## Changelog
 ### **v1.1 (February 10, 2026)**
 - Expanded SSH detection rules (covers all common patterns)
 - Defensive input validation and CSV sanitization
@@ -59,25 +59,25 @@ SSHVigil is a robust SSH brute-force detection and analysis tool designed for re
 
 ---
 
-## 🚀 Roadmap
+## Roadmap
 - **v2.0:** Advanced threat intelligence, real-time monitoring, and machine learning integration
 
 ---
 
-## ⚙️ Requirements
+## Requirements
 - Python 3.8+ (built-in libraries only)
 - Access to SSH auth logs (e.g., `/var/log/auth.log`, `/var/log/secure`)
 
 ---
 
-## 📦 Installation
+## Installation
 1. Clone this repository
 2. Optional: create a virtual environment
 3. No external dependencies required
 
 ---
 
-## 🔧 Configuration
+## Configuration
 Edit `config.json` to tune behavior:
 - `max_attempts`: Threshold for short-window detection
 - `time_window_minutes`: Rolling window size for short-burst detection
@@ -91,7 +91,7 @@ On first run, a default `config.json` is created if missing.
 
 ---
 
-## 🔒 Security Posture: SSH-Key vs Password Authentication
+## Security Posture: SSH-Key vs Password Authentication
 **Default thresholds** assume mixed environments where legitimate users might occasionally mistype passwords:
 - `max_attempts: 5` — Flags IPs with 5+ failed attempts in a short window
 - `monitor_threshold: 20` — Recommends monitoring at 20+ total attempts
@@ -124,7 +124,7 @@ This sets `max_attempts=1`, `monitor_threshold=1`, `block_threshold=5` to flag e
 
 ---
 
-## 🖥️ Usage
+## Usage
 Interactive run (opens a file picker if no path provided):
 ```bash
 python3 main.py
@@ -172,7 +172,7 @@ python3 main.py --log-file "/var/log/auth.log" --live --noisy   # show everythin
 
 ---
 
-## 🛠️ v1.0 Features
+## v1.0 Features
 ### Non-Interactive Mode
 Run without prompts for automation (cron jobs, systemd timers):
 ```bash
@@ -228,7 +228,7 @@ python .\main.py --log-file "C:\\path\\to\\auth.log"
 
 ---
 
-## 📊 Output
+## Output
 
 ![SSHVigil threat analysis output showing real-time SSH brute-force detection: 12 IPs analyzed with 104 total attempts over 19 minutes. Two HIGH-severity IPs (146.190.237.126 and 36.88.28.122) marked as BLOCKED with 12 and 10 attempts respectively, while MEDIUM-severity threats are monitored and LOW-severity IPs allowed. Blocklist summary shows 2 IPs blocked at HIGH+ severity threshold.](<assets/Image of output.png>)
 
@@ -241,7 +241,7 @@ To export all results to CSV, answer `y` when prompted or set `export_csv` in co
 
 ---
 
-## 🔗 Fail2ban Integration
+## Fail2ban Integration
 SSHVigil is designed to work alongside fail2ban, not to replace it. The integration helps improve fail2ban’s blocklists and analytics. Export a blocklist of malicious IPs for use with fail2ban or manual iptables blocking:
 ```bash
 # Export HIGH+ severity IPs to blocklist (default threshold)
@@ -366,13 +366,13 @@ sudo fail2ban-client status ssh-analyzer
 
 ---
 
-## 🗒️ Notes
+## Notes
 - Supported formats are auto-detected; if detection fails, available formats are listed.
 - The parser tracks basic stats: lines read, format matches, extract matches, and timestamp coverage.
 
 ---
 
-## 📅 Roadmap (v2.0+)
+## Roadmap (v2.0+)
 - Additional event types and heuristics
 - Enrichment (GeoIP, ASN) via optional modules
 - Batch processing and scheduling
@@ -380,7 +380,7 @@ sudo fail2ban-client status ssh-analyzer
 
 ---
 
-## 📜 License
+## License
 MIT License — See [LICENSE](LICENSE) file for details.
 
 Free to use, modify, and distribute with attribution.
