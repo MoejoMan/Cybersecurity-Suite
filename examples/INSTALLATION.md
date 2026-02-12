@@ -42,10 +42,10 @@ tail -f /var/log/sshvigil_live.csv
 **Install:**
 ```bash
 # Make script executable
-chmod +x examples/tripwire-cron.sh
+chmod +x examples/sshvigil-cron.sh
 
 # Copy to cron.hourly
-sudo cp examples/tripwire-cron.sh /etc/cron.hourly/tripwire-analysis
+sudo cp examples/sshvigil-cron.sh /etc/cron.hourly/sshvigil-analysis
 
 # Or add to crontab for custom schedule
 sudo crontab -e
@@ -55,10 +55,10 @@ sudo crontab -e
 **Check results:**
 ```bash
 # View latest CSV
-ls -lt /var/log/tripwire/*.csv | head -1 | awk '{print $NF}' | xargs cat
+ls -lt /var/log/sshvigil/*.csv | head -1 | awk '{print $NF}' | xargs cat
 
 # View cron logs
-sudo tail -f /var/log/tripwire/tripwire.log
+sudo tail -f /var/log/sshvigil/sshvigil.log
 ```
 
 ---
@@ -87,10 +87,10 @@ sudo systemctl restart fail2ban
 **Verify:**
 ```bash
 # Check jail status
-sudo fail2ban-client status tripwire-blocklist
+sudo fail2ban-client status sshvigil-blocklist
 
 # View banned IPs
-sudo fail2ban-client get tripwire-blocklist banned
+sudo fail2ban-client get sshvigil-blocklist banned
 
 # View fail2ban logs
 sudo tail -f /var/log/fail2ban.log
@@ -98,7 +98,7 @@ sudo tail -f /var/log/fail2ban.log
 
 **Unban an IP:**
 ```bash
-sudo fail2ban-client set tripwire-blocklist unbanip 192.0.2.10
+sudo fail2ban-client set sshvigil-blocklist unbanip 192.0.2.10
 ```
 
 ---
@@ -112,12 +112,12 @@ Run SSHVigil as a systemd service + fail2ban for enforcement:
 sudo systemctl enable --now sshvigil
 
 # 2. Install fail2ban integration (automatic banning)
-sudo cp examples/fail2ban-tripwire.conf /etc/fail2ban/jail.d/
+sudo cp examples/fail2ban-sshvigil.conf /etc/fail2ban/jail.d/
 sudo systemctl restart fail2ban
 
 # 3. Check everything is working
-sudo systemctl status tripwire
-sudo fail2ban-client status tripwire-blocklist
+sudo systemctl status sshvigil
+sudo fail2ban-client status sshvigil-blocklist
 ```
 
 This setup provides:
@@ -130,26 +130,26 @@ This setup provides:
 
 ## Troubleshooting
 
-**Tripwire service won't start:**
+**SSHVigil service won't start:**
 ```bash
 # Check logs
-sudo journalctl -u tripwire -n 50
+sudo journalctl -u sshvigil -n 50
 
 # Verify Python path
 which python3
 
 # Test manually
-cd /opt/tripwire
+cd /opt/sshvigil
 python3 main.py --log-file /var/log/auth.log --live --quiet
 ```
 
 **Fail2ban not banning IPs:**
 ```bash
 # Check if blocklist file exists
-ls -l /var/lib/tripwire/blocklist.txt
+ls -l /var/lib/sshvigil/blocklist.txt
 
 # Verify fail2ban is reading the file
-sudo fail2ban-client get tripwire-blocklist logpath
+sudo fail2ban-client get sshvigil-blocklist logpath
 
 # Check fail2ban logs
 sudo tail -f /var/log/fail2ban.log
@@ -158,11 +158,11 @@ sudo tail -f /var/log/fail2ban.log
 **Whitelist not working:**
 ```bash
 # Verify whitelist file syntax (one IP per line)
-cat /etc/tripwire/whitelist.txt
+cat /etc/sshvigil/whitelist.txt
 
 # Test manually
 python3 main.py --log-file /var/log/auth.log \
-  --whitelist /etc/tripwire/whitelist.txt \
+  --whitelist /etc/sshvigil/whitelist.txt \
   --export-blocklist /tmp/test-blocklist.txt \
   --non-interactive
 

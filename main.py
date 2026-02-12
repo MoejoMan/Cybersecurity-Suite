@@ -1,5 +1,5 @@
 """
-Tripwire - Lightweight Security Threat Detection
+SSHVigil - Lightweight Security Threat Detection
 
 SSH Brute Force Analysis Module
 
