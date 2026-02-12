@@ -15,23 +15,32 @@
 
 # 🚦 SSHVigil SSH Brute-Force Analyzer
 
+**Purpose:** SSHVigil is a lightweight, focused SSH brute-force detection and analysis tool. It is designed for users who want a simple, production-ready solution for SSH security monitoring—without the complexity or overhead of full-stack monitoring systems like Kibana or Grafana.
+
+**How it fits:** SSHVigil is not a replacement for established tools like fail2ban or enterprise monitoring stacks. Instead, it enhances your existing setup by providing:
+- Out-of-the-box SSH brute-force detection and clear, actionable summaries
+- Easy integration with fail2ban (to improve its blocklists and detection, not to replace it)
+- A portable, dependency-free Python solution for environments where heavier tools are impractical
+
+**Upcoming:** Integration with other popular monitoring and alerting systems is planned for future releases.
+
 > **Version:** `1.1` &nbsp;|&nbsp; **Release Date:** February 10, 2026
 
 ---
 
 ## 🛡️ Overview
-SSHVigil is a robust SSH brute-force detection and analysis tool designed for reliability, security, and production use. It parses SSH logs, detects brute-force attempts, and exports blocklists for fail2ban/systemd integration.
+SSHVigil is a robust SSH brute-force detection and analysis tool designed for reliability, security, and production use. It parses SSH logs, detects brute-force attempts, and exports blocklists for fail2ban/systemd integration. The fail2ban integration is meant to enhance fail2ban's detection/blocking by providing better blocklists and analytics, not to replace fail2ban itself. Future versions will add integration with other popular monitoring and alerting tools.
 
 ---
 
 ## ✨ Features
-- **Comprehensive SSH brute-force detection** (all common log patterns)
-- **Defensive input validation & error handling**
-- **CSV blocklist export** with formula injection protection
-- **Configurable detection thresholds**
-- **Dataclasses & enums for core models**
-- **Version constant & `--version` CLI flag**
-- **Production-ready deployment** (fail2ban/systemd)
+- Focused SSH brute-force detection (all common log patterns)
+- Defensive input validation & error handling
+- CSV blocklist export (with formula injection protection)
+- Configurable detection thresholds
+- Dataclasses & enums for core models
+- Version constant & `--version` CLI flag
+- Production-ready deployment (fail2ban/systemd integration)
 
 ---
 
@@ -233,7 +242,7 @@ To export all results to CSV, answer `y` when prompted or set `export_csv` in co
 ---
 
 ## 🔗 Fail2ban Integration
-Export a blocklist of malicious IPs for use with fail2ban or manual iptables blocking:
+SSHVigil is designed to work alongside fail2ban, not to replace it. The integration helps improve fail2ban’s blocklists and analytics. Export a blocklist of malicious IPs for use with fail2ban or manual iptables blocking:
 ```bash
 # Export HIGH+ severity IPs to blocklist (default threshold)
 python3 main.py --log-file "/var/log/auth.log" --export-blocklist blocked-ips.txt
@@ -260,7 +269,7 @@ sudo iptables -F INPUT
 ```
 
 ### Automated fail2ban setup
-One-command fail2ban integration with automatic jail and filter config creation:
+One-command fail2ban integration with automatic jail and filter config creation. This setup is optional and intended to enhance fail2ban’s SSH protection:
 ```bash
 # Setup fail2ban jail and filter (creates configs, restarts fail2ban)
 sudo python3 main.py --setup-fail2ban
