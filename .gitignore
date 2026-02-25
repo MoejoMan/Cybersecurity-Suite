@@ -1,3 +1,23 @@
+# Additional ignores
+# OS-specific
+Thumbs.db
+ehthumbs.db
+desktop.ini
+
+# Jupyter and notebook checkpoints
+.ipynb_checkpoints/
+
+# Test fixtures and outputs
+tests/fixtures/
+tests/__pycache__/
+examples/*.log
+examples/*.csv
+
+# Asset outputs (if generated)
+assets/*.png
+
+# Ignore config.json if user-specific
+config.json
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
