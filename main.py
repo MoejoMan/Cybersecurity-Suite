@@ -104,10 +104,10 @@ class BruteForceDetector:
         """
         Sanitize a value for CSV export to prevent formula injection.
         
-        Prefixes values starting with =, +, -, @, \t, \r with a single quote
-        to neutralize spreadsheet formula execution.
+        Prefixes values starting with =, +, -, @, \t, \r, \f with a single quote
+        to neutralize spreadsheet formula execution (OWASP CSV injection).
         """
-        if isinstance(value, str) and value and value[0] in ('=', '+', '-', '@', '\t', '\r'):
+        if isinstance(value, str) and value and value[0] in ('=', '+', '-', '@', '\t', '\r', '\f'):
             return "'" + value
         return value
 
@@ -635,13 +635,20 @@ def is_localhost_or_private(ip_str):
     
     return False
 
+WHITELIST_MAX_BYTES = 10 * 1024 * 1024  # 10 MB cap to prevent memory exhaustion
+
+
 def load_whitelist(whitelist_path):
     """Load whitelisted IPs from file."""
     whitelist = set()
     if not whitelist_path:
         return whitelist
-    
+
     try:
+        size = os.path.getsize(whitelist_path)
+        if size > WHITELIST_MAX_BYTES:
+            print(f"[WARNING] Whitelist file too large ({size} bytes > {WHITELIST_MAX_BYTES}); refusing to load.")
+            return whitelist
         with open(whitelist_path, 'r') as f:
             for line in f:
                 ip = line.strip()
@@ -653,7 +660,7 @@ def load_whitelist(whitelist_path):
         print(f"[WARNING] Whitelist file not found: {whitelist_path}")
     except Exception as e:
         print(f"[WARNING] Error loading whitelist: {e}")
-    
+
     return whitelist
 
 
@@ -752,66 +759,73 @@ WantedBy=multi-user.target
 
 
 def generate_fail2ban_script(script_path, log_path, blocklist_path, threshold, whitelist_path=None):
-        """Generate a ready-to-run fail2ban updater script and make it executable."""
-        blocklist_path = blocklist_path or "/var/lib/sshvigil/blocklist.txt"
-        app_dir = os.path.dirname(os.path.abspath(__file__))
-        python_bin = sys.executable or "/usr/bin/env python3"
-        threshold = threshold or "HIGH"
-        whitelist_path = whitelist_path or ""
+    """Generate a ready-to-run fail2ban updater script and make it executable."""
+    import shlex
 
-        script_dir = os.path.dirname(os.path.abspath(script_path))
-        if script_dir:
-                os.makedirs(script_dir, exist_ok=True)
+    blocklist_path = blocklist_path or "/var/lib/sshvigil/blocklist.txt"
+    app_dir = os.path.dirname(os.path.abspath(__file__))
+    python_bin = sys.executable or "/usr/bin/env python3"
+    threshold = threshold or "HIGH"
+    whitelist_path = whitelist_path or ""
 
-        script_template = """#!/bin/bash
+    # Restrict threshold to known-safe values; never interpolate raw user text
+    # into the script body unquoted.
+    if threshold not in ("CRITICAL", "HIGH", "MEDIUM", "LOW"):
+        threshold = "HIGH"
+
+    script_dir = os.path.dirname(os.path.abspath(script_path))
+    if script_dir:
+        os.makedirs(script_dir, exist_ok=True)
+
+    # Shell-quote every interpolated path so paths with spaces / quotes / $()
+    # can't break out of the string or execute commands.
+    q_log = shlex.quote(log_path) if log_path else "''"
+    q_blocklist = shlex.quote(blocklist_path)
+    q_python = shlex.quote(python_bin)
+    q_app_dir = shlex.quote(app_dir)
+    q_whitelist = shlex.quote(whitelist_path)
+    main_py = shlex.quote(os.path.join(app_dir, "main.py"))
+
+    script_content = f"""#!/bin/bash
 set -euo pipefail
 
-LOG_FILE=\"{log_path}\"
-BLOCKLIST=\"{blocklist}\"
-PYTHON_BIN=\"{python_bin}\"
-APP_DIR=\"{app_dir}\"
+LOG_FILE={q_log}
+BLOCKLIST={q_blocklist}
+PYTHON_BIN={q_python}
+MAIN_PY={main_py}
 TOP_N=5
-WHITELIST=\"{whitelist}\"
+WHITELIST={q_whitelist}
 
-mkdir -p \"$(dirname \"$BLOCKLIST\")\"
+mkdir -p "$(dirname "$BLOCKLIST")"
 
-if [ -n \"$WHITELIST\" ]; then
-    WHITELIST_ARG=\"--whitelist $WHITELIST\"
+if [ -n "$WHITELIST" ]; then
+    WHITELIST_ARG=(--whitelist "$WHITELIST")
 else
-    WHITELIST_ARG=\"\"
+    WHITELIST_ARG=()
 fi
 
-\"$PYTHON_BIN\" \"$APP_DIR/main.py\" \\
-    --log-file \"$LOG_FILE\" \\
+"$PYTHON_BIN" "$MAIN_PY" \\
+    --log-file "$LOG_FILE" \\
     --non-interactive \\
-    --export-blocklist \"$BLOCKLIST\" \\
+    --export-blocklist "$BLOCKLIST" \\
     --blocklist-threshold {threshold} \\
-    $WHITELIST_ARG
+    "${{WHITELIST_ARG[@]}}"
 
-head -n \"$TOP_N\" \"$BLOCKLIST\" | while read -r ip; do
-    [ -z \"$ip\" ] && continue
-    sudo fail2ban-client set sshd banip \"$ip\"
-    echo \"[$(date)] Banned $ip\"
+head -n "$TOP_N" "$BLOCKLIST" | while read -r ip; do
+    [ -z "$ip" ] && continue
+    sudo fail2ban-client set sshd banip "$ip"
+    echo "[$(date)] Banned $ip"
 done
 """
 
-        script_content = script_template.format(
-                log_path=log_path,
-                blocklist=blocklist_path,
-                python_bin=python_bin,
-                app_dir=app_dir,
-                threshold=threshold,
-                whitelist=whitelist_path,
-        )
-
-        with open(script_path, 'w', newline='\n') as f:
-                f.write(script_content)
-        try:
-                os.chmod(script_path, 0o755)
-        except Exception:
-                pass
-        print(f"[OK] Generated fail2ban helper script: {script_path}")
-        print("Run: sudo bash {script_path}  (or add to cron)".format(script_path=script_path))
+    with open(script_path, 'w', newline='\n') as f:
+        f.write(script_content)
+    try:
+        os.chmod(script_path, 0o755)
+    except Exception:
+        pass
+    print(f"[OK] Generated fail2ban helper script: {script_path}")
+    print(f"Run: sudo bash {script_path}  (or add to cron)")
 
 
 def main():

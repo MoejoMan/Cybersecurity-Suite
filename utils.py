@@ -1,8 +1,9 @@
 """
-Minimal utility helpers placeholder.
+Shared utility helpers for SSHVigil.
 
-We'll add small, reusable functions here over time (e.g., formatting,
-color helpers, CSV export), keeping this module lightweight.
+- `is_valid_ip`: strict IPv4/IPv6 validation (rejects CIDR notation).
+- `follow_file`: tail-like generator that survives truncation/rotation
+  and emits `None` during idle periods so callers can run heartbeats.
 """
 
 import os

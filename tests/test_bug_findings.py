@@ -100,22 +100,17 @@ class TestFoundBugs:
     
     def test_tabs_in_rules_file(self):
         """
-        BUG: Tab characters used for indentation in rules.py
-        Severity: MEDIUM
-        
-        The rules.py file uses tabs instead of spaces, which is inconsistent
-        with the rest of the codebase and violates PEP 8.
+        Regression guard: rules.py must use spaces, not tabs (PEP 8).
+        Originally documented a real bug; kept inverted so the bug can't return.
         """
-        # Read rules.py and check for tabs
-        with open("rules.py", "rb") as f:
+        import os
+        rules_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "rules.py")
+        with open(rules_path, "rb") as f:
             content = f.read()
-        
-        # BUG: File contains tab characters
-        assert b"\t" in content  # This documents the bug
-        
-        # The file still works, but it's inconsistent
+        assert b"\t" not in content, "rules.py should not contain tab indentation"
+
         from rules import PATTERNS
-        assert len(PATTERNS) > 0  # Functionality is not affected
+        assert len(PATTERNS) > 0
 
 
 class TestCodeQualityIssues:
